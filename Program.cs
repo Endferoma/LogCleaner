@@ -11,6 +11,10 @@ string[] regexPattern = File.ReadAllLines("patterns.txt");
 List<FileInfo> logs = new DirectoryInfo(folderPath).GetFiles().ToList();
 Regex[] compiledPatterns = regexPattern.Select(p => new Regex(p, RegexOptions.Compiled)).ToArray();
 
+if (File.Exists("output.txt")) {
+    File.Delete("output.txt");
+}
+
 foreach (var log in logs) {
     using (var streamReader = new StreamReader(log.FullName)) {
         if (log.Extension == ".gz") {
@@ -23,20 +27,23 @@ foreach (var log in logs) {
         }
     }
 
-void ReadFileStream(StreamReader reader) {
+    void ReadFileStream(StreamReader reader) {
         string line;
-        
-        while ((line = reader.ReadLine()) != null) {
-            foreach (var pattern in compiledPatterns) {
-                var match = pattern.Match(line);
-                if (match.Success) {
-                    //Console.WriteLine($"Matched: {match.Groups["player1"].Value}");
-                    string comment = match.Groups["comment"].Value;
-                    line = comment == "" ? line : line.Replace(comment, "");
-                    Console.WriteLine(line);
+        using (StreamWriter writer = new StreamWriter("output.txt", true)) {
+            while ((line = reader.ReadLine()) != null) {
+                foreach (var pattern in compiledPatterns) {
+                    var match = pattern.Match(line);
+                    if (match.Success) {
+                        //Console.WriteLine($"Matched: {match.Groups["player1"].Value}");
+                        string comment = match.Groups["comment"].Value;
+                        line = comment == "" ? line : line.Replace(comment, "");
+                        Console.WriteLine(line);
+                        writer.WriteLine(line);
+                    }
                 }
             }
         }
     }
+
 }
 
