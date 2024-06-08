@@ -1,8 +1,7 @@
-﻿using SharpCompress.Common;
-using SharpCompress.Compressors.Xz;
-using System;
+﻿using System;
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
 string folderPath = "logs";
@@ -28,22 +27,33 @@ foreach (var log in logs) {
     }
 
     void ReadFileStream(StreamReader reader) {
-        string line;
+        string line; string timestamp = "";
+        bool serverStarted = false; bool serverClosed = false;
+
         using (StreamWriter writer = new StreamWriter("output.txt", true)) {
             while ((line = reader.ReadLine()) != null) {
                 foreach (var pattern in compiledPatterns) {
                     var match = pattern.Match(line);
                     if (match.Success) {
-                        //Console.WriteLine($"Matched: {match.Groups["player1"].Value}");
                         string comment = match.Groups["comment"].Value;
                         line = comment == "" ? line : line.Replace(comment, "");
-                        Console.WriteLine(line);
                         writer.WriteLine(line);
+                        Console.WriteLine(line);
+                        if (pattern.ToString() == regexPattern[0]) {
+                            serverStarted = true;
+                        } else if (pattern.ToString() == regexPattern[1]) {
+                            serverClosed = true;
+                        }
+                        timestamp = match.Groups["timestamp"].Value;
                     }
                 }
+            }
+            if (!serverClosed) {
+                line = $"{timestamp} [Server thread/INFO]: Closing Server";
+                writer.WriteLine(line);
+                Console.WriteLine(line);
             }
         }
     }
 
 }
-
