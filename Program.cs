@@ -16,18 +16,20 @@ if (File.Exists("output.txt")) {
 
 foreach (var log in logs) {
     using (var streamReader = new StreamReader(log.FullName)) {
+        DateOnly logDate = DateOnly.ParseExact(log.CreationTimeUtc.Date.ToString("yyyy-MM-dd"), "yyyy-MM-dd", null);
         if (log.Extension == ".gz") {
             using (var archive = new GZipStream(streamReader.BaseStream, CompressionMode.Decompress))
             using (var archiveReader = new StreamReader(archive)) {
-                ReadFileStream(archiveReader);
+                
+                ReadFileStream(logDate, archiveReader);
             }
         } else {
-            ReadFileStream(streamReader);
+            ReadFileStream(logDate, streamReader);
         }
     }
 
-    void ReadFileStream(StreamReader reader) {
-        string line; string timestamp = "";
+    void ReadFileStream(DateOnly date, StreamReader reader) {
+        string line; string datetimestamp = "";
         bool serverStarted = false; bool serverClosed = false;
 
         using (StreamWriter writer = new StreamWriter("output.txt", true)) {
@@ -36,6 +38,11 @@ foreach (var log in logs) {
                     var match = pattern.Match(line);
                     if (match.Success) {
                         string comment = match.Groups["comment"].Value;
+                        string timestamp = match.Groups["timestamp"].Value;
+                        datetimestamp = date.ToString("yyyy':'MM':'dd-") + timestamp;
+
+                        line = line.Replace(timestamp, datetimestamp);
+
                         line = comment == "" ? line : line.Replace(comment, "");
                         writer.WriteLine(line);
                         Console.WriteLine(line);
@@ -44,12 +51,11 @@ foreach (var log in logs) {
                         } else if (pattern.ToString() == regexPattern[1]) {
                             serverClosed = true;
                         }
-                        timestamp = match.Groups["timestamp"].Value;
                     }
                 }
             }
             if (!serverClosed) {
-                line = $"{timestamp} [Server thread/INFO]: Closing Server";
+                line = $"[{datetimestamp}] [Server thread/INFO]: Closing Server";
                 writer.WriteLine(line);
                 Console.WriteLine(line);
             }
